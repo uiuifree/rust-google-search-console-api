@@ -1,5 +1,5 @@
 use yup_oauth2::{AccessToken};
-use google_analytics_api_ga4::SearchConsoleApi;
+use google_search_console_api::SearchConsoleApi;
 
 
 async fn test_token() -> AccessToken {

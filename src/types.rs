@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct DimensionFilterGroup {
     #[serde(rename = "groupType")]
     pub group_type: Option<String>,
-    pub filters: Option<String>,
+    pub filters: Vec<DimensionFilterGroupFilter>,
 }
 
 #[derive(Default, Debug, Serialize, Deserialize, Clone)]

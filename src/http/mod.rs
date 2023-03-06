@@ -4,7 +4,7 @@ use crate::error::GoogleApiError;
 
 
 #[derive(Default, Debug)]
-pub struct HttpClient {}
+pub(crate) struct HttpClient {}
 
 
 impl HttpClient {
@@ -33,7 +33,7 @@ impl HttpClient {
         let response = response.unwrap();
         let status = response.status();
         let value = response.text().await;
-        if status != 200 {
+        if !(200 <= status.as_u16() && status.as_u16() < 300) {
             return Err(GoogleApiError::JsonParse(value.unwrap().to_string()));
         }
         if value.is_err() {
@@ -52,13 +52,18 @@ impl HttpClient {
             T: for<'de> serde::Deserialize<'de>,
             U: serde::Serialize + std::fmt::Debug
     {
-        let response = reqwest::Client::new()
-            .post(format!("{}", url))
-            .header("Authorization", format!("Bearer {}", token))
+        let mut response = reqwest::Client::new()
+            .post(format!("{}", url));
+        if !token.is_empty() {
+            response = response.header("Authorization", format!("Bearer {}", token))
+        }
+        let response = response
             .json(&json!(params))
             .send()
             .await;
 
+        println!("{}", url);
+        println!("{}", &json!(params).to_string());
 
         if response.is_err() {
             return Err(GoogleApiError::Connection(response.err().unwrap().to_string()));
@@ -67,9 +72,11 @@ impl HttpClient {
         let status = response.status();
         let value = response.text().await;
         if status != 200 {
+            println!("b");
             return Err(GoogleApiError::JsonParse(value.unwrap().to_string()));
         }
         if value.is_err() {
+            println!("c");
             return Err(GoogleApiError::JsonParse(value.unwrap().to_string()));
         }
         let value = value.unwrap();
@@ -80,6 +87,7 @@ impl HttpClient {
 
         Ok(parse.unwrap())
     }
+
     pub async fn put<T, U>(token: &str, url: &str, params: U) -> Result<T, GoogleApiError>
         where
             T: for<'de> serde::Deserialize<'de>,

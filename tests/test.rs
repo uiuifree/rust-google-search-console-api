@@ -1,9 +1,9 @@
 use std::error::Error;
 use csv::Writer;
 use yup_oauth2::{AccessToken};
-use google_analytics_api_ga4::search_analytics::query::SearchAnalyticsQueryRequest;
-use google_analytics_api_ga4::SearchConsoleApi;
-use google_analytics_api_ga4::types::DIMENSION;
+use google_search_console_api::search_analytics::query::SearchAnalyticsQueryRequest;
+use google_search_console_api::SearchConsoleApi;
+use google_search_console_api::types::DIMENSION;
 
 
 async fn test_token() -> AccessToken {
@@ -27,7 +27,7 @@ async fn test_run_realtime_report() {
 
 async fn export(start_date: &str, end_date: &str) {
     let token = test_token().await;
-    let res = SearchConsoleApi::search_analytics().query(token.as_str(), "https://example.com", SearchAnalyticsQueryRequest {
+    let res = SearchConsoleApi::search_analytics().query(token.as_str(), "https://uiuifree.com", SearchAnalyticsQueryRequest {
         start_date: start_date.to_string(),
         end_date: end_date.to_string(),
         dimensions: Some(vec![
