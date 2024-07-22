@@ -1,6 +1,6 @@
 [package]
 name = "google-search-console-api"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 
 authors = ["uiuifree"]
@@ -9,6 +9,10 @@ license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 keywords = ["SearchConsole"]
+
+readme="README.md"
+repository = "https://github.com/uiuifree/rust-google-search-console-api"
+
 [dependencies]
 reqwest ={version="0.11.10",features=["json"]}
 urlencoding={version="2.1.0"}
@@ -18,7 +22,7 @@ serde_json = "1.0"
 serde_derive = "1.0"
 
 
-yup-oauth2="7.0.0"
 [dev-dependencies]
 tokio = { version = "1.19.2", features = ["full"] }
 csv="1.1.6"
+yup-oauth2="7.0.0"
