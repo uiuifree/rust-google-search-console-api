@@ -8,7 +8,13 @@ https://developers.google.com/webmaster-tools/v1/api_reference_index
 google-search-console-api="0.1"
 ```
 
-## Token
+## Installation
+```
+cargo add google-search-console-api
+cargo add yup-oauth2
+```
+
+## Token Lifetime Example
 Using yup_oauth2
 ``` rust
 async fn token() -> AccessToken {
