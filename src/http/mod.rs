@@ -62,8 +62,8 @@ impl HttpClient {
             .send()
             .await;
 
-        println!("{}", url);
-        println!("{}", &json!(params).to_string());
+        // println!("{}", url);
+        // println!("{}", &json!(params).to_string());
 
         if response.is_err() {
             return Err(GoogleApiError::Connection(response.err().unwrap().to_string()));
@@ -72,11 +72,9 @@ impl HttpClient {
         let status = response.status();
         let value = response.text().await;
         if status != 200 {
-            println!("b");
             return Err(GoogleApiError::JsonParse(value.unwrap().to_string()));
         }
         if value.is_err() {
-            println!("c");
             return Err(GoogleApiError::JsonParse(value.unwrap().to_string()));
         }
         let value = value.unwrap();
