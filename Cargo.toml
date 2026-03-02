@@ -1,14 +1,14 @@
 [package]
 name = "google-search-console-api"
-version = "0.1.2"
+version = "0.2.0"
 edition = "2021"
 
 authors = ["uiuifree"]
-description = "SearchConsoleApi"
+description = "Unofficial Rust client for Google Search Console API"
 license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-keywords = ["SearchConsole"]
+keywords = ["google", "search-console", "seo", "webmaster", "api"]
 
 readme="README.md"
 repository = "https://github.com/uiuifree/rust-google-search-console-api"

@@ -1,63 +1,213 @@
-## features
-Search Console Api  
-https://developers.google.com/webmaster-tools/v1/api_reference_index
+# google-search-console-api
 
-## Using
-```
-[dependencies]
-google-search-console-api="0.1"
-```
+[![Crates.io](https://img.shields.io/crates/v/google-search-console-api.svg)](https://crates.io/crates/google-search-console-api)
+[![Documentation](https://docs.rs/google-search-console-api/badge.svg)](https://docs.rs/google-search-console-api)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+An unofficial Rust client library for the [Google Search Console API](https://developers.google.com/webmaster-tools/v1/api_reference_index).
+
+## Features
+
+- **Search Analytics** - Query search performance data (clicks, impressions, CTR, position)
+- **Sitemaps** - List, get, submit, and delete sitemaps
+- **Sites** - Add, delete, get, and list sites
+- **URL Inspection** - Inspect URLs for indexing status, AMP, mobile usability, and rich results
+- **Mobile Friendly Test** - Test if a page is mobile-friendly
 
 ## Installation
+
+```toml
+[dependencies]
+google-search-console-api = "0.1"
 ```
+
+Or using cargo:
+
+```bash
 cargo add google-search-console-api
-cargo add yup-oauth2
 ```
 
-## Token Lifetime Example
-Using yup_oauth2
-``` rust
-async fn token() -> AccessToken {
-    // 認証
-    let secret = yup_oauth2::read_service_account_key("./test.json")
+## Quick Start
+
+### Authentication
+
+This library requires an OAuth2 access token. We recommend using [yup-oauth2](https://crates.io/crates/yup-oauth2) for authentication.
+
+```rust
+use yup_oauth2::{ServiceAccountAuthenticator, read_service_account_key};
+
+async fn get_token() -> String {
+    let secret = read_service_account_key("service-account.json")
         .await
-        .expect("test.json");
-    let auth = yup_oauth2::ServiceAccountAuthenticator::builder(secret).build().await.unwrap();
+        .expect("Failed to read service account key");
+
+    let auth = ServiceAccountAuthenticator::builder(secret)
+        .build()
+        .await
+        .expect("Failed to create authenticator");
+
     let scopes = &["https://www.googleapis.com/auth/webmasters"];
+    let token = auth.token(scopes).await.expect("Failed to get token");
 
-    let token = auth.token(scopes).await;
-    assert!(token.is_ok(), "{}", token.err().unwrap().to_string());
-    token.unwrap()
+    token.token().unwrap().to_string()
 }
 ```
 
+### Search Analytics
 
-## runReport
-``` rust
-let token = token().await;
-#[tokio::test]
-async fn test_sitemaps() {
-    let test_site = "https://example.com/";
-    let token = test_token().await;
-    println!("{:?}",token);
-    let res = SearchConsoleApi::sitemaps().submit(token.as_str(),test_site,"https://example.com/sitemap/static.xml").await;
-    assert!(res.is_ok(),"{:?}",res.err().unwrap().to_string());
+Query search performance data for your site:
 
-    let res = SearchConsoleApi::sitemaps().list(token.as_str(),test_site).await;
-    assert!(res.is_ok(),"{:?}",res.err());
+```rust
+use google_search_console_api::SearchConsoleApi;
+use google_search_console_api::search_analytics::query::SearchAnalyticsQueryRequest;
+use google_search_console_api::types::Dimension;
 
-    let sitemap =res.unwrap();
-    assert_ne!(sitemap.sitemap.len(),0);
+#[tokio::main]
+async fn main() {
+    let token = get_token().await;
+    let site_url = "https://example.com/";
 
-    for row in sitemap.sitemap{
-        let path = row.path.unwrap_or_default();
-        let res = SearchConsoleApi::sitemaps().get(token.as_str(),test_site,path.as_str()).await;
-        assert!(res.is_ok(),"{:?}",res.err());
-        println!("{:?}",res.unwrap())
+    // Using the builder pattern (recommended)
+    let request = SearchAnalyticsQueryRequest::builder("2024-01-01", "2024-01-31")
+        .dimensions(vec![Dimension::Query, Dimension::Page])
+        .row_limit(100)
+        .build();
+
+    let response = SearchConsoleApi::search_analytics()
+        .query(&token, site_url, request)
+        .await
+        .expect("Failed to query search analytics");
+
+    if let Some(rows) = response.rows {
+        for row in rows {
+            println!(
+                "Keys: {:?}, Clicks: {:?}, Impressions: {:?}, CTR: {:?}, Position: {:?}",
+                row.keys, row.clicks, row.impressions, row.ctr, row.position
+            );
+        }
     }
-    let res = SearchConsoleApi::sitemaps().delete(token.as_str(),test_site,"https://example.com/sitemap/static.xml").await;
-    assert!(res.is_ok(),"{:?}",res.err());
-
 }
-
 ```
+
+### Sitemaps
+
+Manage sitemaps for your site:
+
+```rust
+use google_search_console_api::SearchConsoleApi;
+
+#[tokio::main]
+async fn main() {
+    let token = get_token().await;
+    let site_url = "https://example.com/";
+
+    // List all sitemaps
+    let sitemaps = SearchConsoleApi::sitemaps()
+        .list(&token, site_url)
+        .await
+        .expect("Failed to list sitemaps");
+
+    println!("Sitemaps: {:?}", sitemaps);
+
+    // Submit a new sitemap
+    SearchConsoleApi::sitemaps()
+        .submit(&token, site_url, "https://example.com/sitemap.xml")
+        .await
+        .expect("Failed to submit sitemap");
+}
+```
+
+### Sites
+
+Manage sites in your Search Console:
+
+```rust
+use google_search_console_api::SearchConsoleApi;
+
+#[tokio::main]
+async fn main() {
+    let token = get_token().await;
+
+    // List all sites
+    let sites = SearchConsoleApi::sites()
+        .list(&token)
+        .await
+        .expect("Failed to list sites");
+
+    println!("Sites: {:?}", sites);
+
+    // Get a specific site
+    let site = SearchConsoleApi::sites()
+        .get(&token, "https://example.com/")
+        .await
+        .expect("Failed to get site");
+
+    println!("Site: {:?}", site);
+}
+```
+
+### URL Inspection
+
+Inspect a URL for indexing status:
+
+```rust
+use google_search_console_api::SearchConsoleApi;
+use google_search_console_api::url_inspection::RequestUrlInspection;
+
+#[tokio::main]
+async fn main() {
+    let token = get_token().await;
+
+    let request = RequestUrlInspection {
+        inspection_url: "https://example.com/page".to_string(),
+        site_url: "https://example.com/".to_string(),
+        language_code: "en".to_string(),
+    };
+
+    let result = SearchConsoleApi::url_inspection()
+        .inspect(&token, &request)
+        .await
+        .expect("Failed to inspect URL");
+
+    println!("Inspection result: {:?}", result);
+}
+```
+
+### Mobile Friendly Test
+
+Test if a page is mobile-friendly (requires API key):
+
+```rust
+use google_search_console_api::SearchConsoleApi;
+use google_search_console_api::mobile_friendly_test::RequestMobileFriendlyTest;
+
+#[tokio::main]
+async fn main() {
+    let api_key = "YOUR_API_KEY";
+
+    // Simple request
+    let request = RequestMobileFriendlyTest::new("https://example.com/");
+
+    // Or with screenshot
+    let request_with_screenshot = RequestMobileFriendlyTest::new("https://example.com/")
+        .with_screenshot();
+
+    let result = SearchConsoleApi::mobile_friendly_test()
+        .run(api_key, &request)
+        .await
+        .expect("Failed to run mobile friendly test");
+
+    println!("Mobile friendly: {:?}", result);
+}
+```
+
+## API Reference
+
+- [Search Analytics](https://developers.google.com/webmaster-tools/v1/searchanalytics)
+- [Sitemaps](https://developers.google.com/webmaster-tools/v1/sitemaps)
+- [Sites](https://developers.google.com/webmaster-tools/v1/sites)
+- [URL Inspection](https://developers.google.com/webmaster-tools/v1/urlInspection.index)
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.

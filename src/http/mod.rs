@@ -1,162 +1,148 @@
-use std::fmt::{Debug};
-use serde_json::{json};
 use crate::error::GoogleApiError;
-
+use serde_json::json;
+use std::fmt::Debug;
 
 #[derive(Default, Debug)]
 pub(crate) struct HttpClient {}
 
-
 impl HttpClient {
     pub async fn get<T, U>(token: &str, url: &str, params: U) -> Result<T, GoogleApiError>
-        where
-            T: for<'de> serde::Deserialize<'de>,
-            U: serde::Serialize + std::fmt::Debug
+    where
+        T: for<'de> serde::Deserialize<'de>,
+        U: serde::Serialize + std::fmt::Debug,
     {
-        let mut response = reqwest::Client::new()
-            .get(format!("{}", url))
+        let mut request = reqwest::Client::new()
+            .get(url)
             .header("Authorization", format!("Bearer {}", token));
 
         let q = json!(params).to_string();
         if !q.is_empty() && q != "{}" {
-            response = response.json(&q);
+            request = request.json(&q);
         } else {
-            response = response.header("Accept", "application/json");
+            request = request.header("Accept", "application/json");
         }
 
-        let response = response.send().await;
+        let response = request
+            .send()
+            .await
+            .map_err(|e| GoogleApiError::Connection(e.to_string()))?;
 
+        let status = response.status().as_u16();
+        let value = response
+            .text()
+            .await
+            .map_err(|e| GoogleApiError::Connection(e.to_string()))?;
 
-        if response.is_err() {
-            return Err(GoogleApiError::Connection(response.err().unwrap().to_string()));
-        }
-        let response = response.unwrap();
-        let status = response.status();
-        let value = response.text().await;
-        if !(200 <= status.as_u16() && status.as_u16() < 300) {
-            return Err(GoogleApiError::JsonParse(value.unwrap().to_string()));
-        }
-        if value.is_err() {
-            return Err(GoogleApiError::JsonParse(value.unwrap().to_string()));
-        }
-        let value = value.unwrap();
-        let parse = serde_json::from_str(value.as_str());
-        if parse.is_err() {
-            return Err(GoogleApiError::JsonParse(value));
+        if !(200..300).contains(&status) {
+            return Err(GoogleApiError::Api {
+                status,
+                message: value,
+            });
         }
 
-        Ok(parse.unwrap())
+        serde_json::from_str(&value).map_err(|_| GoogleApiError::JsonParse(value))
     }
+
     pub async fn post<T, U>(token: &str, url: &str, params: U) -> Result<T, GoogleApiError>
-        where
-            T: for<'de> serde::Deserialize<'de>,
-            U: serde::Serialize + std::fmt::Debug
+    where
+        T: for<'de> serde::Deserialize<'de>,
+        U: serde::Serialize + std::fmt::Debug,
     {
-        let mut response = reqwest::Client::new()
-            .post(format!("{}", url));
+        let mut request = reqwest::Client::new().post(url);
+
         if !token.is_empty() {
-            response = response.header("Authorization", format!("Bearer {}", token))
+            request = request.header("Authorization", format!("Bearer {}", token));
         }
-        let response = response
+
+        let response = request
             .json(&json!(params))
             .send()
-            .await;
+            .await
+            .map_err(|e| GoogleApiError::Connection(e.to_string()))?;
 
-        // println!("{}", url);
-        // println!("{}", &json!(params).to_string());
+        let status = response.status().as_u16();
+        let value = response
+            .text()
+            .await
+            .map_err(|e| GoogleApiError::Connection(e.to_string()))?;
 
-        if response.is_err() {
-            return Err(GoogleApiError::Connection(response.err().unwrap().to_string()));
-        }
-        let response = response.unwrap();
-        let status = response.status();
-        let value = response.text().await;
-        if status != 200 {
-            return Err(GoogleApiError::JsonParse(value.unwrap().to_string()));
-        }
-        if value.is_err() {
-            return Err(GoogleApiError::JsonParse(value.unwrap().to_string()));
-        }
-        let value = value.unwrap();
-        let parse = serde_json::from_str(value.as_str());
-        if parse.is_err() {
-            return Err(GoogleApiError::JsonParse(value));
+        if !(200..300).contains(&status) {
+            return Err(GoogleApiError::Api {
+                status,
+                message: value,
+            });
         }
 
-        Ok(parse.unwrap())
+        serde_json::from_str(&value).map_err(|_| GoogleApiError::JsonParse(value))
     }
 
     pub async fn put<T, U>(token: &str, url: &str, params: U) -> Result<T, GoogleApiError>
-        where
-            T: for<'de> serde::Deserialize<'de>,
-            U: serde::Serialize + std::fmt::Debug
+    where
+        T: for<'de> serde::Deserialize<'de>,
+        U: serde::Serialize + std::fmt::Debug,
     {
         let response = reqwest::Client::new()
-            .put(format!("{}", url))
+            .put(url)
             .header("Authorization", format!("Bearer {}", token))
             .json(&json!(params))
             .send()
-            .await;
+            .await
+            .map_err(|e| GoogleApiError::Connection(e.to_string()))?;
 
-
-        if response.is_err() {
-            return Err(GoogleApiError::Connection(response.err().unwrap().to_string()));
-        }
-        let response = response.unwrap();
         let status = response.status().as_u16();
-        let value = response.text().await;
-        if !(200 <= status && status < 300) {
-            return Err(GoogleApiError::JsonParse(value.unwrap().to_string()));
-        }
-        if value.is_err() {
-            return Err(GoogleApiError::JsonParse(value.unwrap().to_string()));
-        }
-        let mut value = value.unwrap();
-        if value == "" {
-            value = "{}".to_string();
-        }
-        let parse = serde_json::from_str(value.as_str());
-        if parse.is_err() {
-            return Err(GoogleApiError::JsonParse(value));
+        let value = response
+            .text()
+            .await
+            .map_err(|e| GoogleApiError::Connection(e.to_string()))?;
+
+        if !(200..300).contains(&status) {
+            return Err(GoogleApiError::Api {
+                status,
+                message: value,
+            });
         }
 
-        Ok(parse.unwrap())
+        let value = if value.is_empty() {
+            "{}".to_string()
+        } else {
+            value
+        };
+
+        serde_json::from_str(&value).map_err(|_| GoogleApiError::JsonParse(value))
     }
+
     pub async fn delete<T, U>(token: &str, url: &str, params: U) -> Result<T, GoogleApiError>
-        where
-            T: for<'de> serde::Deserialize<'de>,
-            U: serde::Serialize + std::fmt::Debug
+    where
+        T: for<'de> serde::Deserialize<'de>,
+        U: serde::Serialize + std::fmt::Debug,
     {
         let response = reqwest::Client::new()
-            .delete(format!("{}", url))
+            .delete(url)
             .header("Authorization", format!("Bearer {}", token))
             .json(&json!(params))
             .send()
-            .await;
+            .await
+            .map_err(|e| GoogleApiError::Connection(e.to_string()))?;
 
-
-        if response.is_err() {
-            return Err(GoogleApiError::Connection(response.err().unwrap().to_string()));
-        }
-        let response = response.unwrap();
         let status = response.status().as_u16();
-        let value = response.text().await;
+        let value = response
+            .text()
+            .await
+            .map_err(|e| GoogleApiError::Connection(e.to_string()))?;
 
-        if !(200 <= status && status < 300) {
-            return Err(GoogleApiError::JsonParse(value.unwrap().to_string()));
-        }
-        if value.is_err() {
-            return Err(GoogleApiError::JsonParse(value.unwrap().to_string()));
-        }
-        let mut value = value.unwrap();
-        if value == "" {
-            value = "{}".to_string();
-        }
-        let parse = serde_json::from_str(value.as_str());
-        if parse.is_err() {
-            return Err(GoogleApiError::JsonParse(value));
+        if !(200..300).contains(&status) {
+            return Err(GoogleApiError::Api {
+                status,
+                message: value,
+            });
         }
 
-        Ok(parse.unwrap())
+        let value = if value.is_empty() {
+            "{}".to_string()
+        } else {
+            value
+        };
+
+        serde_json::from_str(&value).map_err(|_| GoogleApiError::JsonParse(value))
     }
 }
